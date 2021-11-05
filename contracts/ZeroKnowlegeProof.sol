@@ -6,16 +6,17 @@ pragma solidity >=0.4.22 <0.9.0;
 // import "@openzeppelin/contracts/proxy/Initializable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
-contract ZeroKnowlegeProof is ERC20 {
+contract ZeroKnowlegeProof is ERC20{
 
-    event CreateTaskEvent(address sender, bytes programHash, string publicInputs, uint128[] outputs, uint8[] proofId);
+    event CreateTaskEvent(address sender, bytes programHash, uint128[] publicInputs, uint128[] outputs, string proofId);
     event AddWhitelistEvent(address sender, address white);
-    event SaveProofEvent(address sender, address owner, bytes programHash, string publicInputs, bool result);
-    event SaveProofFailedEvent(address sender, address owner, bytes programHash, string publicInputs, bool result);
+    event SaveProofEvent(address sender, address owner, bytes programHash, bool result);
+    event SaveProofFailedEvent(address sender, address owner, bytes programHash, bool result);
     event AddClassTypeEvent(string class, bytes programHash);
     event RemoveClassTypeEvent(string class);
+    event RemoveProofEvent(address owner, bytes programHash);
 
-    mapping (address => mapping (bytes => mapping (string => bool))) proofs;
+    mapping (address => mapping (bytes => bool)) proofs;
     mapping (address => bool) whitelist;
     mapping (string => bytes) classes;
 
@@ -23,18 +24,17 @@ contract ZeroKnowlegeProof is ERC20 {
     //     ownableConstructor();
     // }
 
-    constructor(uint256 initialSupply) ERC20("Proof", "PROOFTOK") {
+  constructor(uint256 initialSupply) ERC20("Proof", "PROOFTOK") {
     _mint(msg.sender, initialSupply);
-    }
+  }
 
     function verify(
         bytes memory programHash,
-        string memory publicInputs,
+        uint128[] memory publicInputs,
         uint128[] memory outputs,
-        uint8[] memory proofId
-    ) public returns(bytes memory,string memory,uint128[] memory,uint8[] memory){
+        string memory proofId
+    ) public {
         emit CreateTaskEvent(msg.sender, programHash, publicInputs, outputs, proofId);
-        return (programHash, publicInputs, outputs, proofId);
 
     }
 
@@ -42,28 +42,35 @@ contract ZeroKnowlegeProof is ERC20 {
         address sender,
         address owner, 
         bytes memory programHash, 
-        string memory publicInputs,
         bool result
         ) public {
         if (isWhitelist(sender)){
-            proofs[owner][programHash][publicInputs] = result;
-            emit SaveProofEvent(sender, owner, programHash, publicInputs, result);
+            proofs[owner][programHash] = result;
+            emit SaveProofEvent(sender, owner, programHash, result);
         }else{
-            emit SaveProofFailedEvent(sender, owner, programHash, publicInputs, result);
+            emit SaveProofFailedEvent(sender, owner, programHash, result);
         }
     }
 
     function getProof(
         address sender,
-        bytes memory programHash,
-        string memory publicInputs
+        bytes memory programHash
         ) public view returns (bool) {
-        if (proofs[sender][programHash][publicInputs]) {
+        if (proofs[sender][programHash]) {
             return true;
         } else {
             return false;
         }
     }
+
+    function removePoorf(
+        address owner,
+        bytes memory programHash
+    ) public {
+        delete proofs[owner][programHash];
+        emit RemoveProofEvent(owner, programHash);
+    }
+    
 
     function addWhitelist(address white) public {
         _setWhite(white);
@@ -103,9 +110,4 @@ contract ZeroKnowlegeProof is ERC20 {
     function _addClass(string memory class, bytes memory programHash) internal {
         classes[class] = programHash;
     }
-
-
-
-
-
 }
